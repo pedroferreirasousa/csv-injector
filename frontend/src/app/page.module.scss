@@ -1,19 +1,41 @@
-.container {
+@use "variables" as *;
+
+.wrapper {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   min-height: 100vh;
-  padding: 2rem;
-  
-  h1 {
-    color: #2563eb;
-    margin-bottom: 1rem;
-    font-size: 2.5rem;
-  }
+}
 
-  p {
-    color: #64748b;
-    font-size: 1.1rem;
+.topbar {
+  height: 52px;
+  border-bottom: 1px solid $border-color;
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  background: $bg-card;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: $text-dark;
+  letter-spacing: -0.01em;
+
+  svg {
+    color: $primary;
   }
+}
+
+.main {
+  flex: 1;
+  padding: 2.5rem 2rem;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
 }

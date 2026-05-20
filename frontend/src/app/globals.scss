@@ -1,4 +1,6 @@
-// frontend/src/app/globals.scss
+// src/app/globals.scss
+@use "variables" as *;
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -6,7 +8,7 @@
 }
 
 body {
-  font-family: sans-serif;
-  background-color: #f8fafc;
-  color: #1e293b;
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: $bg-main;
+  color: $text-dark;
 }
