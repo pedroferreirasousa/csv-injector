@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { CSVUploadResponse } from "../DragDropZone";
 import { ArrowLeftIcon, CodeIcon, ClipboardIcon, CheckIcon } from "@/components/icons";
-import { DIALECT_TYPES_MAP } from "./constants";
+import { DIALECT_TYPES_MAP, isBooleanOrTinyint, ValueMapping } from "./constants";
+import Modal from "../Modal";
 import styles from "./styles.module.scss";
 
 interface MappingTableProps {
@@ -16,6 +17,7 @@ interface ColumnConfig {
   enabled: boolean;
   db_name: string;
   db_type: string;
+  value_mappings?: ValueMapping[];
 }
 
 export default function MappingTable({ data, onCancel }: MappingTableProps) {
@@ -23,6 +25,10 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedSql, setGeneratedSql] = useState("");
   const [copied, setCopied] = useState(false);
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeModalIndex, setActiveModalIndex] = useState<number | null>(null);
+  const [tempMappings, setTempMappings] = useState<ValueMapping[]>([]);
 
   const [tableName, setTableName] = useState(() => {
     return data.filename.toLowerCase().replace(".csv", "").replace(/[^a-z0-9_]/g, "_");
@@ -48,7 +54,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
 
   const handleDialectChange = (newDialect: string) => {
     setDialect(newDialect);
-    setColumns((prev) => prev.map((col) => ({ ...col, db_type: "VARCHAR(255)" })));
+    setColumns((prev) => prev.map((col) => ({ ...col, db_type: "VARCHAR(255)", value_mappings: undefined })));
   };
 
   const handleRowPropertyChange = (
@@ -59,8 +65,35 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
     setColumns((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [property]: value } as ColumnConfig;
+      if (property === "db_type") {
+        updated[index].value_mappings = undefined;
+      }
       return updated;
     });
+
+    if (property === "db_type" && isBooleanOrTinyint(value as string)) {
+      const currentMappings = columns[index].value_mappings;
+      setTempMappings(currentMappings && currentMappings.length > 0
+        ? currentMappings
+        : [{ when_value: "Y", then_value: "1" }, { when_value: "N", then_value: "0" }]
+      );
+      setActiveModalIndex(index);
+      setIsModalOpen(true);
+    }
+  };
+
+  const saveModalMappings = () => {
+    if (activeModalIndex !== null) {
+      setColumns((prev) => {
+        const updated = [...prev];
+        updated[activeModalIndex].value_mappings = tempMappings.filter(
+          m => m.when_value.trim() !== "" && m.then_value.trim() !== ""
+        );
+        return updated;
+      });
+    }
+    setIsModalOpen(false);
+    setActiveModalIndex(null);
   };
 
   const handleGenerateScript = async () => {
@@ -85,6 +118,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
         csv_name: c.csv_name,
         db_name: c.db_name,
         db_type: c.db_type,
+        value_mappings: c.value_mappings || [],
       })),
     };
 
@@ -194,17 +228,35 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
               style={{ flex: 2 }}
             />
 
-            <select
-              value={column.db_type}
-              onChange={(e) => handleRowPropertyChange(index, "db_type", e.target.value)}
-              disabled={!column.enabled}
-              className={styles.tableSelect}
-              style={{ flex: 1.5 }}
-            >
-              {currentTypes.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
+            <div style={{ flex: 1.5, display: "flex", alignItems: "center", gap: "8px" }}>
+              <select
+                value={column.db_type}
+                onChange={(e) => handleRowPropertyChange(index, "db_type", e.target.value)}
+                disabled={!column.enabled}
+                className={styles.tableSelect}
+                style={{ flex: 1 }}
+              >
+                {currentTypes.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              {column.enabled && isBooleanOrTinyint(column.db_type) && (
+                <button
+                  type="button"
+                  className={styles.gearBtn}
+                  onClick={() => {
+                    setTempMappings(column.value_mappings || [
+                      { when_value: "Y", then_value: "1" },
+                      { when_value: "N", then_value: "0" }
+                    ]);
+                    setActiveModalIndex(index);
+                    setIsModalOpen(true);
+                  }}
+                >
+                  ⚙️
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -242,6 +294,50 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
           />
         </div>
       )}
+
+      <Modal
+        isOpen={isModalOpen && activeModalIndex !== null}
+        onClose={() => { setIsModalOpen(false); setActiveModalIndex(null); }}
+        title="Configurar Regras de Conversão"
+      >
+        {activeModalIndex !== null && (
+          <div className={styles.modalContentBody}>
+            <p>Coluna: <strong>{columns[activeModalIndex].csv_name}</strong></p>
+            
+            <div className={styles.mappingRows}>
+              {tempMappings.map((map, i) => (
+                <div key={i} className={styles.modalRow}>
+                  <span>Se o valor for:</span>
+                  <input 
+                    type="text" 
+                    value={map.when_value} 
+                    onChange={(e) => setTempMappings(prev => {
+                      const copy = [...prev];
+                      copy[i].when_value = e.target.value;
+                      return copy;
+                    })}
+                  />
+                  <span>mudar para:</span>
+                  <input 
+                    type="text" 
+                    value={map.then_value} 
+                    onChange={(e) => setTempMappings(prev => {
+                      const copy = [...prev];
+                      copy[i].then_value = e.target.value;
+                      return copy;
+                    })}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className={styles.modalActions}>
+              <button type="button" onClick={() => { setIsModalOpen(false); setActiveModalIndex(null); }}>Cancelar</button>
+              <button type="button" className={styles.btnSave} onClick={saveModalMappings}>Aplicar Regras</button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

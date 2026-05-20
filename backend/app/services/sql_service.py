@@ -5,6 +5,7 @@ from app.schemas.sql_schema import SQLGenerationRequest, SQLGenerationResponse
 
 
 class SQLService:
+
     @staticmethod
     def generate_script(payload: SQLGenerationRequest) -> SQLGenerationResponse:
         temp_path = os.path.join(STORAGE_DIR, payload.filename)
@@ -27,34 +28,69 @@ class SQLService:
             table = payload.custom_table_name.strip()
             mappings = payload.mappings
 
-            columns_sql = ", ".join(f"{quote}{m.db_name}{quote}" for m in mappings)
+            seen_db_names = set()
+            unique_active_cols = []
+            for m in mappings:
+                if m.db_name not in seen_db_names:
+                    seen_db_names.add(m.db_name)
+                    unique_active_cols.append(m)
+
+            columns_sql = ", ".join(f"{quote}{m.db_name}{quote}" for m in unique_active_cols)
             sql_lines = []
 
             for row in rows:
                 values_list = []
-                for m in mappings:
+                for m in unique_active_cols:
                     val = row.get(m.csv_name, "")
+
                     if val == "" or val is None:
                         values_list.append("NULL")
-                    elif any(
-                        t in m.db_type.lower()
-                        for t in ("int", "decimal", "numeric", "float")
-                    ):
-                        clean_num = str(val).replace(",", ".").strip()
+                        continue
+
+                    val_str = str(val).strip()
+
+                    if m.value_mappings:
+                        matched = False
+                        for rule in m.value_mappings:
+                            if val_str.upper() == rule.when_value.strip().upper():
+                                values_list.append(rule.then_value.strip())
+                                matched = True
+                                break
+                        if matched:
+                            continue
+                        else:
+                            tipo_coluna = m.db_type.lower()
+                            if any(t in tipo_coluna for t in ("tinyint", "int", "bool", "bit")):
+                                values_list.append(val_str if val_str.isdigit() else "0")
+                            else:
+                                values_list.append(f"'{val_str.replace(chr(39), chr(39) * 2)}'")
+                            continue
+                    tipo_coluna = m.db_type.lower()
+                    if any(t in tipo_coluna for t in ("tinyint", "int", "bool", "bit")):
+                        if val_str.upper() in ["Y", "YES", "TRUE", "S", "SIM"]:
+                            values_list.append("1")
+                        elif val_str.upper() in ["N", "NO", "FALSE", "NÃO", "NAO"]:
+                            values_list.append("0")
+                        else:
+                            values_list.append(val_str if val_str.isdigit() else "0")
+
+                    elif any(t in tipo_coluna for t in ("decimal", "numeric", "float")):
+                        clean_num = val_str.replace(",", ".")
                         try:
                             values_list.append(
                                 str(float(clean_num) if "." in clean_num else int(clean_num))
                             )
                         except ValueError:
-                            values_list.append(f"'{str(val).replace(chr(39), chr(39) * 2)}'")
+                            values_list.append(f"'{val_str.replace(chr(39), chr(39) * 2)}'")
                     else:
-                        clean_val = str(val).replace("'", "''")
+                        clean_val = val_str.replace("'", "''")
                         values_list.append(f"'{clean_val}'")
 
                 values_str = ", ".join(values_list)
-                sql_lines.append(
-                    f"INSERT INTO {quote}{table}{quote} ({columns_sql}) VALUES ({values_str});"
-                )
+                if columns_sql and values_str:
+                    sql_lines.append(
+                        f"INSERT INTO {quote}{table}{quote} ({columns_sql}) VALUES ({values_str});"
+                    )
 
             return SQLGenerationResponse(
                 sql_script="\n".join(sql_lines),
