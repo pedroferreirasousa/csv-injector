@@ -1,0 +1,75 @@
+@use "../../app/variables" as *;
+
+.dropzone {
+  width: 100%;
+  max-width: 560px;
+  margin: 4rem auto;
+  padding: 4rem 2rem;
+  border: 1.5px dashed $border-color;
+  border-radius: 8px;
+  background-color: $bg-card;
+  text-align: center;
+  cursor: pointer;
+  transition: $transition-fast;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+
+  &:hover {
+    border-color: $primary;
+    background-color: rgba($primary, 0.02);
+
+    .iconContainer {
+      color: $primary;
+    }
+  }
+
+  &.dragActive {
+    border-color: $primary;
+    border-style: solid;
+    background-color: rgba($primary, 0.04);
+
+    .iconContainer {
+      color: $primary;
+    }
+  }
+
+  &.isLoading {
+    cursor: default;
+    pointer-events: none;
+  }
+}
+
+.iconContainer {
+  color: $text-muted;
+  transition: color 0.2s ease;
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+.textContainer {
+  p {
+    font-size: 1rem;
+    font-weight: 500;
+    color: $text-dark;
+    margin-bottom: 0.25rem;
+  }
+
+  span {
+    font-size: 0.875rem;
+    color: $text-muted;
+  }
+}
+
+.fileInput {
+  display: none;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
