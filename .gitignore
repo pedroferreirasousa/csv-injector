@@ -1,7 +1,9 @@
 # Python (Backend)
 backend/.venv/
-backend/__pycache__/
-backend/*.pyc
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
 backend/.env
 
 # Node.js (Frontend)
