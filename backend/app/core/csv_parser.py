@@ -2,8 +2,9 @@ import os
 import pandas as pd
 import csv
 from io import StringIO
+from app.core.config import settings
 
-STORAGE_DIR = "/tmp" if os.name != "nt" else "C:\\Windows\\Temp"
+STORAGE_DIR = settings.storage_dir
 
 
 class CSVProcessor:
