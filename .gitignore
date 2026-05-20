@@ -1,0 +1,18 @@
+# Python (Backend)
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+backend/.env
+
+# Node.js (Frontend)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.env*.local
+
+# Diversos e Sistema Operacional
+.DS_Store
+Thumbs.db
+*.pem
+npm-debug.log*
