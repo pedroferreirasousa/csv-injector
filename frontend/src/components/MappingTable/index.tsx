@@ -24,12 +24,10 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
   const [generatedSql, setGeneratedSql] = useState("");
   const [copied, setCopied] = useState(false);
 
-  // Inicialização Lazy do nome da tabela (calculado apenas uma vez ao montar)
   const [tableName, setTableName] = useState(() => {
     return data.filename.toLowerCase().replace(".csv", "").replace(/[^a-z0-9_]/g, "_");
   });
 
-  // Inicialização Lazy das colunas baseado no retorno do CSV
   const [columns, setColumns] = useState<ColumnConfig[]>(() => {
     return data.columns.map((col) => {
       const cleanColName = col
@@ -46,12 +44,10 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
     });
   });
 
-  // 👇 Consome as constantes externas de forma dinâmica
   const currentTypes = DIALECT_TYPES_MAP[dialect] || DIALECT_TYPES_MAP["mysql"];
 
   const handleDialectChange = (newDialect: string) => {
     setDialect(newDialect);
-    // Reinicia as colunas para o tipo padrão seguro ao mudar o banco
     setColumns((prev) => prev.map((col) => ({ ...col, db_type: "VARCHAR(255)" })));
   };
 

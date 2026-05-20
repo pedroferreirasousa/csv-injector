@@ -24,7 +24,6 @@ export const POSTGRES_TYPES = [
   "TIMESTAMP"
 ];
 
-// Mapeamento centralizado para facilitar a busca dinâmica por dialeto
 export const DIALECT_TYPES_MAP: Record<string, string[]> = {
   mysql: MYSQL_TYPES,
   postgresql: POSTGRES_TYPES,
