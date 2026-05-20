@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CSVUploadResponse } from "../DragDropZone";
 import { ArrowLeftIcon, CodeIcon, ClipboardIcon, CheckIcon } from "@/components/icons";
-import { DIALECT_TYPES_MAP, isBooleanOrTinyint, ValueMapping } from "./constants";
+import { DIALECT_TYPES_MAP, isBooleanOrTinyint, isDateType, ValueMapping, DATE_FORMAT_OPTIONS } from "./constants";
 import Modal from "../Modal";
 import styles from "./styles.module.scss";
 
@@ -18,6 +18,7 @@ interface ColumnConfig {
   db_name: string;
   db_type: string;
   value_mappings?: ValueMapping[];
+  date_format?: string;
 }
 
 export default function MappingTable({ data, onCancel }: MappingTableProps) {
@@ -28,7 +29,9 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeModalIndex, setActiveModalIndex] = useState<number | null>(null);
+  const [modalType, setModalType] = useState<"boolean" | "date" | null>(null);
   const [tempMappings, setTempMappings] = useState<ValueMapping[]>([]);
+  const [tempDateFormat, setTempDateFormat] = useState("%d/%m/%Y");
 
   const [tableName, setTableName] = useState(() => {
     return data.filename.toLowerCase().replace(".csv", "").replace(/[^a-z0-9_]/g, "_");
@@ -54,7 +57,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
 
   const handleDialectChange = (newDialect: string) => {
     setDialect(newDialect);
-    setColumns((prev) => prev.map((col) => ({ ...col, db_type: "VARCHAR(255)", value_mappings: undefined })));
+    setColumns((prev) => prev.map((col) => ({ ...col, db_type: "VARCHAR(255)", value_mappings: undefined, date_format: undefined })));
   };
 
   const handleRowPropertyChange = (
@@ -67,33 +70,51 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
       updated[index] = { ...updated[index], [property]: value } as ColumnConfig;
       if (property === "db_type") {
         updated[index].value_mappings = undefined;
+        updated[index].date_format = undefined;
       }
       return updated;
     });
 
-    if (property === "db_type" && isBooleanOrTinyint(value as string)) {
-      const currentMappings = columns[index].value_mappings;
-      setTempMappings(currentMappings && currentMappings.length > 0
-        ? currentMappings
-        : [{ when_value: "Y", then_value: "1" }, { when_value: "N", then_value: "0" }]
-      );
-      setActiveModalIndex(index);
-      setIsModalOpen(true);
+    if (property === "db_type") {
+      if (isBooleanOrTinyint(value as string)) {
+        const currentMappings = columns[index].value_mappings;
+        setTempMappings(currentMappings && currentMappings.length > 0
+          ? currentMappings
+          : [{ when_value: "Y", then_value: "1" }, { when_value: "N", then_value: "0" }]
+        );
+        setModalType("boolean");
+        setActiveModalIndex(index);
+        setIsModalOpen(true);
+      } else if (isDateType(value as string)) {
+        setTempDateFormat(columns[index].date_format || "%d/%m/%Y");
+        setModalType("date");
+        setActiveModalIndex(index);
+        setIsModalOpen(true);
+      }
     }
   };
 
   const saveModalMappings = () => {
     if (activeModalIndex !== null) {
-      setColumns((prev) => {
-        const updated = [...prev];
-        updated[activeModalIndex].value_mappings = tempMappings.filter(
-          m => m.when_value.trim() !== "" && m.then_value.trim() !== ""
-        );
-        return updated;
-      });
+      if (modalType === "boolean") {
+        setColumns((prev) => {
+          const updated = [...prev];
+          updated[activeModalIndex].value_mappings = tempMappings.filter(
+            (m) => m.when_value.trim() !== "" && m.then_value.trim() !== ""
+          );
+          return updated;
+        });
+      } else if (modalType === "date") {
+        setColumns((prev) => {
+          const updated = [...prev];
+          updated[activeModalIndex].date_format = tempDateFormat;
+          return updated;
+        });
+      }
     }
     setIsModalOpen(false);
     setActiveModalIndex(null);
+    setModalType(null);
   };
 
   const handleGenerateScript = async () => {
@@ -119,6 +140,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
         db_name: c.db_name,
         db_type: c.db_type,
         value_mappings: c.value_mappings || [],
+        date_format: c.date_format || null,
       })),
     };
 
@@ -240,15 +262,21 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
-              {column.enabled && isBooleanOrTinyint(column.db_type) && (
+              {column.enabled && (isBooleanOrTinyint(column.db_type) || isDateType(column.db_type)) && (
                 <button
                   type="button"
                   className={styles.gearBtn}
                   onClick={() => {
-                    setTempMappings(column.value_mappings || [
-                      { when_value: "Y", then_value: "1" },
-                      { when_value: "N", then_value: "0" }
-                    ]);
+                    if (isBooleanOrTinyint(column.db_type)) {
+                      setTempMappings(column.value_mappings || [
+                        { when_value: "Y", then_value: "1" },
+                        { when_value: "N", then_value: "0" },
+                      ]);
+                      setModalType("boolean");
+                    } else {
+                      setTempDateFormat(column.date_format || "%d/%m/%Y");
+                      setModalType("date");
+                    }
                     setActiveModalIndex(index);
                     setIsModalOpen(true);
                   }}
@@ -297,43 +325,61 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
 
       <Modal
         isOpen={isModalOpen && activeModalIndex !== null}
-        onClose={() => { setIsModalOpen(false); setActiveModalIndex(null); }}
-        title="Configurar Regras de Conversão"
+        onClose={() => { setIsModalOpen(false); setActiveModalIndex(null); setModalType(null); }}
+        title={modalType === "date" ? "Configurar Formato de Data" : "Configurar Regras de Conversão"}
       >
         {activeModalIndex !== null && (
           <div className={styles.modalContentBody}>
             <p>Coluna: <strong>{columns[activeModalIndex].csv_name}</strong></p>
-            
-            <div className={styles.mappingRows}>
-              {tempMappings.map((map, i) => (
-                <div key={i} className={styles.modalRow}>
-                  <span>Se o valor for:</span>
-                  <input 
-                    type="text" 
-                    value={map.when_value} 
-                    onChange={(e) => setTempMappings(prev => {
-                      const copy = [...prev];
-                      copy[i].when_value = e.target.value;
-                      return copy;
-                    })}
-                  />
-                  <span>mudar para:</span>
-                  <input 
-                    type="text" 
-                    value={map.then_value} 
-                    onChange={(e) => setTempMappings(prev => {
-                      const copy = [...prev];
-                      copy[i].then_value = e.target.value;
-                      return copy;
-                    })}
-                  />
-                </div>
-              ))}
-            </div>
+
+            {modalType === "date" ? (
+              <div className={styles.inputGroup}>
+                <label>Formato da data no CSV</label>
+                <select
+                  value={tempDateFormat}
+                  onChange={(e) => setTempDateFormat(e.target.value)}
+                  className={styles.selectInput}
+                >
+                  {DATE_FORMAT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <p className={styles.formatHint}>
+                  O sistema converte para <code>YYYY-MM-DD</code> antes de inserir no banco.
+                </p>
+              </div>
+            ) : (
+              <div className={styles.mappingRows}>
+                {tempMappings.map((map, i) => (
+                  <div key={i} className={styles.modalRow}>
+                    <span>Se o valor for:</span>
+                    <input
+                      type="text"
+                      value={map.when_value}
+                      onChange={(e) => setTempMappings(prev => {
+                        const copy = [...prev];
+                        copy[i].when_value = e.target.value;
+                        return copy;
+                      })}
+                    />
+                    <span>mudar para:</span>
+                    <input
+                      type="text"
+                      value={map.then_value}
+                      onChange={(e) => setTempMappings(prev => {
+                        const copy = [...prev];
+                        copy[i].then_value = e.target.value;
+                        return copy;
+                      })}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className={styles.modalActions}>
-              <button type="button" onClick={() => { setIsModalOpen(false); setActiveModalIndex(null); }}>Cancelar</button>
-              <button type="button" className={styles.btnSave} onClick={saveModalMappings}>Aplicar Regras</button>
+              <button type="button" onClick={() => { setIsModalOpen(false); setActiveModalIndex(null); setModalType(null); }}>Cancelar</button>
+              <button type="button" className={styles.btnSave} onClick={saveModalMappings}>Aplicar</button>
             </div>
           </div>
         )}

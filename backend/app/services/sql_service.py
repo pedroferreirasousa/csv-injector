@@ -1,7 +1,25 @@
 import os
+from datetime import datetime
 from fastapi import HTTPException, status
 from app.core.csv_parser import CSVProcessor, STORAGE_DIR
 from app.schemas.sql_schema import SQLGenerationRequest, SQLGenerationResponse
+
+_PT_MONTHS = {
+    "janeiro": "January", "fevereiro": "February", "março": "March", "marco": "March",
+    "abril": "April", "maio": "May", "junho": "June",
+    "julho": "July", "agosto": "August", "setembro": "September",
+    "outubro": "October", "novembro": "November", "dezembro": "December",
+}
+
+
+def _parse_date(val: str, fmt: str) -> str:
+    normalized = val.lower()
+    for pt, en in _PT_MONTHS.items():
+        normalized = normalized.replace(pt, en)
+    try:
+        return datetime.strptime(normalized, fmt).strftime("%Y-%m-%d")
+    except ValueError:
+        return val
 
 
 class SQLService:
@@ -81,6 +99,11 @@ class SQLService:
                                 str(float(clean_num) if "." in clean_num else int(clean_num))
                             )
                         except ValueError:
+                            values_list.append(f"'{val_str.replace(chr(39), chr(39) * 2)}'")
+                    elif tipo_coluna in ("date", "timestamp", "datetime"):
+                        if m.date_format and m.date_format != "%Y-%m-%d":
+                            values_list.append(f"'{_parse_date(val_str, m.date_format)}'")
+                        else:
                             values_list.append(f"'{val_str.replace(chr(39), chr(39) * 2)}'")
                     else:
                         clean_val = val_str.replace("'", "''")

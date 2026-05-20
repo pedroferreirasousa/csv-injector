@@ -307,3 +307,137 @@
   outline: none;
   line-height: 1.65;
 }
+
+.gearBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: $bg-main;
+  border: 1px solid $border-color;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  transition: $transition-fast;
+
+  &:hover {
+    border-color: $primary;
+    background: rgba($primary, 0.05);
+  }
+}
+
+.modalContentBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+
+  p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: $text-muted;
+
+    strong {
+      color: $text-dark;
+      font-family: var(--font-geist-mono);
+      font-size: 0.82rem;
+    }
+  }
+}
+
+.mappingRows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.modalRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  align-items: center;
+  gap: 0.6rem;
+
+  span {
+    font-size: 0.8rem;
+    color: $text-muted;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  input {
+    padding: 0.45rem 0.65rem;
+    border: 1px solid $border-color;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: $text-dark;
+    background: $bg-main;
+    font-family: var(--font-geist-mono);
+    outline: none;
+    transition: $transition-fast;
+    width: 100%;
+
+    &:focus {
+      border-color: $primary;
+      background: $bg-card;
+      box-shadow: 0 0 0 3px rgba($primary, 0.08);
+    }
+  }
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid $border-color;
+
+  button {
+    padding: 0.5rem 1.25rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: $transition-fast;
+  }
+
+  button:first-child {
+    background: none;
+    border: 1px solid $border-color;
+    color: $text-muted;
+
+    &:hover {
+      border-color: darken($border-color, 10%);
+      color: $text-dark;
+    }
+  }
+}
+
+.btnSave {
+  background-color: $primary;
+  color: white;
+  border: none;
+  font-weight: 600 !important;
+
+  &:hover {
+    background-color: $primary-hover;
+  }
+}
+
+.formatHint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: $text-muted;
+
+  code {
+    font-family: var(--font-geist-mono);
+    font-size: 0.78rem;
+    background: $bg-main;
+    border: 1px solid $border-color;
+    border-radius: 3px;
+    padding: 0.1em 0.35em;
+    color: $text-dark;
+  }
+}
