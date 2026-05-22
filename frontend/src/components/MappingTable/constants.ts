@@ -1,25 +1,21 @@
 export const MYSQL_TYPES = [
-  "VARCHAR(255)",
+  "VARCHAR",
   "BIGINT",
   "INT",
   "TINYINT(1)",
-  "VARCHAR(50)",
-  "VARCHAR(100)",
   "TEXT",
-  "DECIMAL(20,2)",
+  "DECIMAL",
   "DATE",
   "TIMESTAMP"
 ];
 
 export const POSTGRES_TYPES = [
-  "VARCHAR(255)",
+  "VARCHAR",
   "BIGINT",
   "INTEGER",
   "BOOLEAN",
-  "VARCHAR(50)",
-  "VARCHAR(100)",
   "TEXT",
-  "NUMERIC(20,2)",
+  "NUMERIC",
   "DATE",
   "TIMESTAMP"
 ];
@@ -61,3 +57,16 @@ export const DATE_FORMAT_OPTIONS = [
   { label: "Mês DD, YYYY  (ex: maio 3, 2026)", value: "%B %d, %Y" },
   { label: "DD de Mês de YYYY  (ex: 3 de maio de 2026)", value: "%d de %B de %Y" },
 ];
+
+export const isVarcharType = (type: string): boolean => {
+  return type.toUpperCase().startsWith("VARCHAR");
+};
+
+export const isDecimalType = (type: string): boolean => {
+  const t = type.toUpperCase();
+  return t.startsWith("DECIMAL") || t.startsWith("NUMERIC");
+};
+
+export const getBaseType = (type: string): string => {
+  return type.replace(/\(.*\)$/, "").trim();
+};

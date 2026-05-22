@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CSVUploadResponse } from "../DragDropZone";
 import { ArrowLeftIcon, CodeIcon, ClipboardIcon, CheckIcon } from "@/components/icons";
-import { DIALECT_TYPES_MAP, isBooleanOrTinyint, isDateType, ValueMapping, DATE_FORMAT_OPTIONS, DATE_OUTPUT_FORMAT_OPTIONS } from "./constants";
+import { DIALECT_TYPES_MAP, isBooleanOrTinyint, isDateType, isVarcharType, isDecimalType, getBaseType, ValueMapping, DATE_FORMAT_OPTIONS, DATE_OUTPUT_FORMAT_OPTIONS } from "./constants";
 import Modal from "../Modal";
 import styles from "./styles.module.scss";
 
@@ -30,11 +30,14 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeModalIndex, setActiveModalIndex] = useState<number | null>(null);
-  const [modalType, setModalType] = useState<"boolean" | "date" | null>(null);
+  const [modalType, setModalType] = useState<"boolean" | "date" | "varchar" | "decimal" | null>(null);
   const [tempMappings, setTempMappings] = useState<ValueMapping[]>([]);
   const [tempDateFormat, setTempDateFormat] = useState("%d/%m/%Y");
   const [tempDateOutputFormat, setTempDateOutputFormat] = useState("%Y-%m-%d");
   const [sampleDateValue, setSampleDateValue] = useState("");
+  const [tempVarcharLength, setTempVarcharLength] = useState(255);
+  const [tempDecimalPrecision, setTempDecimalPrecision] = useState(20);
+  const [tempDecimalScale, setTempDecimalScale] = useState(2);
 
   const [tableName, setTableName] = useState(() => {
     return data.filename.toLowerCase().replace(".csv", "").replace(/[^a-z0-9_]/g, "_");
@@ -96,6 +99,19 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
         setModalType("date");
         setActiveModalIndex(index);
         setIsModalOpen(true);
+      } else if (isVarcharType(value as string)) {
+        const match = columns[index].db_type.match(/VARCHAR\((\d+)\)/i);
+        setTempVarcharLength(match ? parseInt(match[1]) : 255);
+        setModalType("varchar");
+        setActiveModalIndex(index);
+        setIsModalOpen(true);
+      } else if (isDecimalType(value as string)) {
+        const match = columns[index].db_type.match(/(?:DECIMAL|NUMERIC)\((\d+),\s*(\d+)\)/i);
+        setTempDecimalPrecision(match ? parseInt(match[1]) : 20);
+        setTempDecimalScale(match ? parseInt(match[2]) : 2);
+        setModalType("decimal");
+        setActiveModalIndex(index);
+        setIsModalOpen(true);
       }
     }
   };
@@ -115,6 +131,45 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
           const updated = [...prev];
           updated[activeModalIndex].date_format = tempDateFormat;
           updated[activeModalIndex].date_output_format = tempDateOutputFormat;
+          return updated;
+        });
+      } else if (modalType === "varchar") {
+        setColumns((prev) => {
+          const updated = [...prev];
+          updated[activeModalIndex].db_type = `VARCHAR(${tempVarcharLength})`;
+          return updated;
+        });
+      } else if (modalType === "decimal") {
+        setColumns((prev) => {
+          const updated = [...prev];
+          const base = getBaseType(updated[activeModalIndex].db_type) || "DECIMAL";
+          updated[activeModalIndex].db_type = `${base}(${tempDecimalPrecision},${tempDecimalScale})`;
+          return updated;
+        });
+      }
+    }
+    setIsModalOpen(false);
+    setActiveModalIndex(null);
+    setModalType(null);
+  };
+
+  const cancelModal = () => {
+    if (activeModalIndex !== null) {
+      if (modalType === "varchar") {
+        setColumns((prev) => {
+          const updated = [...prev];
+          if (/^VARCHAR$/i.test(updated[activeModalIndex].db_type.trim())) {
+            updated[activeModalIndex].db_type = "VARCHAR(255)";
+          }
+          return updated;
+        });
+      } else if (modalType === "decimal") {
+        setColumns((prev) => {
+          const updated = [...prev];
+          if (/^(DECIMAL|NUMERIC)$/i.test(updated[activeModalIndex].db_type.trim())) {
+            const base = updated[activeModalIndex].db_type.toUpperCase() === "NUMERIC" ? "NUMERIC" : "DECIMAL";
+            updated[activeModalIndex].db_type = `${base}(20,2)`;
+          }
           return updated;
         });
       }
@@ -260,7 +315,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
 
             <div style={{ flex: 1.5, display: "flex", alignItems: "center", gap: "8px" }}>
               <select
-                value={column.db_type}
+                value={getBaseType(column.db_type)}
                 onChange={(e) => handleRowPropertyChange(index, "db_type", e.target.value)}
                 disabled={!column.enabled}
                 className={styles.tableSelect}
@@ -270,7 +325,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
-              {column.enabled && (isBooleanOrTinyint(column.db_type) || isDateType(column.db_type)) && (
+              {column.enabled && (isBooleanOrTinyint(column.db_type) || isDateType(column.db_type) || isVarcharType(column.db_type) || isDecimalType(column.db_type)) && (
                 <button
                   type="button"
                   className={styles.gearBtn}
@@ -281,11 +336,20 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
                         { when_value: "N", then_value: "0" },
                       ]);
                       setModalType("boolean");
-                    } else {
+                    } else if (isDateType(column.db_type)) {
                       setTempDateFormat(column.date_format || "%d/%m/%Y");
                       setTempDateOutputFormat(column.date_output_format || "%Y-%m-%d");
                       setSampleDateValue(data.sample_data[0]?.[column.csv_name]?.toString() ?? "");
                       setModalType("date");
+                    } else if (isVarcharType(column.db_type)) {
+                      const match = column.db_type.match(/VARCHAR\((\d+)\)/i);
+                      setTempVarcharLength(match ? parseInt(match[1]) : 255);
+                      setModalType("varchar");
+                    } else if (isDecimalType(column.db_type)) {
+                      const match = column.db_type.match(/(?:DECIMAL|NUMERIC)\((\d+),\s*(\d+)\)/i);
+                      setTempDecimalPrecision(match ? parseInt(match[1]) : 20);
+                      setTempDecimalScale(match ? parseInt(match[2]) : 2);
+                      setModalType("decimal");
                     }
                     setActiveModalIndex(index);
                     setIsModalOpen(true);
@@ -335,14 +399,56 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
 
       <Modal
         isOpen={isModalOpen && activeModalIndex !== null}
-        onClose={() => { setIsModalOpen(false); setActiveModalIndex(null); setModalType(null); }}
-        title={modalType === "date" ? "Configurar Formato de Data" : "Configurar Regras de Conversão"}
+        onClose={cancelModal}
+        title={
+          modalType === "date" ? "Configurar Formato de Data" :
+          modalType === "varchar" ? "Configurar Tamanho VARCHAR" :
+          modalType === "decimal" ? "Configurar Precisão Decimal" :
+          "Configurar Regras de Conversão"
+        }
       >
         {activeModalIndex !== null && (
           <div className={styles.modalContentBody}>
             <p>Coluna: <strong>{columns[activeModalIndex].csv_name}</strong></p>
 
-            {modalType === "date" ? (
+            {modalType === "varchar" ? (
+              <div className={styles.inputGroup}>
+                <label>Tamanho máximo de caracteres</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={tempVarcharLength}
+                  onChange={(e) => setTempVarcharLength(Math.max(1, parseInt(e.target.value) || 1))}
+                  className={styles.textInput}
+                />
+                <p className={styles.formatHint}>Tipo gerado: <code>VARCHAR({tempVarcharLength})</code></p>
+              </div>
+            ) : modalType === "decimal" ? (
+              <div className={styles.inputGroup}>
+                <label>Precisão (total de dígitos)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={65}
+                  value={tempDecimalPrecision}
+                  onChange={(e) => setTempDecimalPrecision(Math.max(1, parseInt(e.target.value) || 1))}
+                  className={styles.textInput}
+                />
+                <label style={{ marginTop: "0.75rem" }}>Casas decimais</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={30}
+                  value={tempDecimalScale}
+                  onChange={(e) => setTempDecimalScale(Math.max(0, parseInt(e.target.value) || 0))}
+                  className={styles.textInput}
+                />
+                <p className={styles.formatHint}>
+                  Tipo gerado: <code>{getBaseType(columns[activeModalIndex]?.db_type ?? "DECIMAL")}({tempDecimalPrecision},{tempDecimalScale})</code>
+                </p>
+              </div>
+            ) : modalType === "date" ? (
               <div className={styles.inputGroup}>
                 {sampleDateValue && (
                   <p className={styles.formatHint}>
@@ -400,7 +506,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
             )}
 
             <div className={styles.modalActions}>
-              <button type="button" onClick={() => { setIsModalOpen(false); setActiveModalIndex(null); setModalType(null); }}>Cancelar</button>
+              <button type="button" onClick={cancelModal}>Cancelar</button>
               <button type="button" className={styles.btnSave} onClick={saveModalMappings}>Aplicar</button>
             </div>
           </div>
