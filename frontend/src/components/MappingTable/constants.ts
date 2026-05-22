@@ -44,12 +44,20 @@ export const isDateType = (type: string): boolean => {
   return t === "DATE" || t === "TIMESTAMP" || t === "DATETIME";
 };
 
+export const DATE_OUTPUT_FORMAT_OPTIONS = [
+  { label: "YYYY-MM-DD  (ex: 2026-05-03) — padrão SQL", value: "%Y-%m-%d" },
+  { label: "DD/MM/YYYY  (ex: 03/05/2026)", value: "%d/%m/%Y" },
+  { label: "MM/DD/YYYY  (ex: 05/03/2026)", value: "%m/%d/%Y" },
+  { label: "DD-MM-YYYY  (ex: 03-05-2026)", value: "%d-%m-%Y" },
+];
+
 export const DATE_FORMAT_OPTIONS = [
   { label: "DD/MM/YYYY  (ex: 03/05/2026)", value: "%d/%m/%Y" },
   { label: "MM/DD/YYYY  (ex: 05/03/2026)", value: "%m/%d/%Y" },
-  { label: "YYYY-MM-DD  (já no formato correto)", value: "%Y-%m-%d" },
+  { label: "YYYY-MM-DD  (ex: 2026-05-03)", value: "%Y-%m-%d" },
   { label: "DD-MM-YYYY  (ex: 03-05-2026)", value: "%d-%m-%Y" },
   { label: "DD/MM/YY    (ex: 03/05/26)", value: "%d/%m/%y" },
+  { label: "DD M\u00eas, YYYY  (ex: 3 maio, 2026)", value: "%d %B, %Y" },
   { label: "Mês DD, YYYY  (ex: maio 3, 2026)", value: "%B %d, %Y" },
   { label: "DD de Mês de YYYY  (ex: 3 de maio de 2026)", value: "%d de %B de %Y" },
 ];

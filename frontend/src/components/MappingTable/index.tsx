@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CSVUploadResponse } from "../DragDropZone";
 import { ArrowLeftIcon, CodeIcon, ClipboardIcon, CheckIcon } from "@/components/icons";
-import { DIALECT_TYPES_MAP, isBooleanOrTinyint, isDateType, ValueMapping, DATE_FORMAT_OPTIONS } from "./constants";
+import { DIALECT_TYPES_MAP, isBooleanOrTinyint, isDateType, ValueMapping, DATE_FORMAT_OPTIONS, DATE_OUTPUT_FORMAT_OPTIONS } from "./constants";
 import Modal from "../Modal";
 import styles from "./styles.module.scss";
 
@@ -19,6 +19,7 @@ interface ColumnConfig {
   db_type: string;
   value_mappings?: ValueMapping[];
   date_format?: string;
+  date_output_format?: string;
 }
 
 export default function MappingTable({ data, onCancel }: MappingTableProps) {
@@ -32,6 +33,8 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
   const [modalType, setModalType] = useState<"boolean" | "date" | null>(null);
   const [tempMappings, setTempMappings] = useState<ValueMapping[]>([]);
   const [tempDateFormat, setTempDateFormat] = useState("%d/%m/%Y");
+  const [tempDateOutputFormat, setTempDateOutputFormat] = useState("%Y-%m-%d");
+  const [sampleDateValue, setSampleDateValue] = useState("");
 
   const [tableName, setTableName] = useState(() => {
     return data.filename.toLowerCase().replace(".csv", "").replace(/[^a-z0-9_]/g, "_");
@@ -57,7 +60,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
 
   const handleDialectChange = (newDialect: string) => {
     setDialect(newDialect);
-    setColumns((prev) => prev.map((col) => ({ ...col, db_type: "VARCHAR(255)", value_mappings: undefined, date_format: undefined })));
+    setColumns((prev) => prev.map((col) => ({ ...col, db_type: "VARCHAR(255)", value_mappings: undefined, date_format: undefined, date_output_format: undefined })));
   };
 
   const handleRowPropertyChange = (
@@ -71,6 +74,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
       if (property === "db_type") {
         updated[index].value_mappings = undefined;
         updated[index].date_format = undefined;
+        updated[index].date_output_format = undefined;
       }
       return updated;
     });
@@ -87,6 +91,8 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
         setIsModalOpen(true);
       } else if (isDateType(value as string)) {
         setTempDateFormat(columns[index].date_format || "%d/%m/%Y");
+        setTempDateOutputFormat(columns[index].date_output_format || "%Y-%m-%d");
+        setSampleDateValue(data.sample_data[0]?.[columns[index].csv_name]?.toString() ?? "");
         setModalType("date");
         setActiveModalIndex(index);
         setIsModalOpen(true);
@@ -108,6 +114,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
         setColumns((prev) => {
           const updated = [...prev];
           updated[activeModalIndex].date_format = tempDateFormat;
+          updated[activeModalIndex].date_output_format = tempDateOutputFormat;
           return updated;
         });
       }
@@ -141,6 +148,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
         db_type: c.db_type,
         value_mappings: c.value_mappings || [],
         date_format: c.date_format || null,
+        date_output_format: c.date_output_format || null,
       })),
     };
 
@@ -275,6 +283,8 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
                       setModalType("boolean");
                     } else {
                       setTempDateFormat(column.date_format || "%d/%m/%Y");
+                      setTempDateOutputFormat(column.date_output_format || "%Y-%m-%d");
+                      setSampleDateValue(data.sample_data[0]?.[column.csv_name]?.toString() ?? "");
                       setModalType("date");
                     }
                     setActiveModalIndex(index);
@@ -334,7 +344,12 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
 
             {modalType === "date" ? (
               <div className={styles.inputGroup}>
-                <label>Formato da data no CSV</label>
+                {sampleDateValue && (
+                  <p className={styles.formatHint}>
+                    Valor no CSV: <code>{sampleDateValue}</code> — selecione o formato que corresponde a esse valor.
+                  </p>
+                )}
+                <label>Formato de entrada (no CSV)</label>
                 <select
                   value={tempDateFormat}
                   onChange={(e) => setTempDateFormat(e.target.value)}
@@ -344,9 +359,16 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
-                <p className={styles.formatHint}>
-                  O sistema converte para <code>YYYY-MM-DD</code> antes de inserir no banco.
-                </p>
+                <label style={{ marginTop: "0.75rem" }}>Formato de saída (no INSERT)</label>
+                <select
+                  value={tempDateOutputFormat}
+                  onChange={(e) => setTempDateOutputFormat(e.target.value)}
+                  className={styles.selectInput}
+                >
+                  {DATE_OUTPUT_FORMAT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               </div>
             ) : (
               <div className={styles.mappingRows}>

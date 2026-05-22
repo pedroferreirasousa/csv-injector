@@ -7,7 +7,7 @@
   margin: 0 auto;
   background: $bg-card;
   border-radius: 8px;
-  border: 1px solid $border-color;
+  border: 2px solid $border-color;
   overflow: hidden;
 }
 
@@ -409,7 +409,7 @@
     color: $text-muted;
 
     &:hover {
-      border-color: darken($border-color, 10%);
+      border-color: color.adjust($border-color, $lightness: -10%);
       color: $text-dark;
     }
   }

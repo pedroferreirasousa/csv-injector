@@ -13,6 +13,7 @@ class MappingItem(BaseModel):
     db_type: str
     value_mappings: Optional[List[ValueMappingSchema]] = []
     date_format: Optional[str] = None
+    date_output_format: Optional[str] = None
 
 
 class SQLGenerationRequest(BaseModel):

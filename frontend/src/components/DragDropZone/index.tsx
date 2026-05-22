@@ -81,6 +81,7 @@ export default function DragDropZone({ onUploadSuccess }: DragDropZoneProps) {
   };
 
   return (
+    <>
     <div
       className={`${styles.dropzone} ${isDragActive ? styles.dragActive : ""} ${loading ? styles.isLoading : ""}`}
       onDragEnter={handleDrag}
@@ -116,5 +117,6 @@ export default function DragDropZone({ onUploadSuccess }: DragDropZoneProps) {
         )}
       </div>
     </div>
+    </>
   );
 }

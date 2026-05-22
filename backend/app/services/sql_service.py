@@ -12,12 +12,12 @@ _PT_MONTHS = {
 }
 
 
-def _parse_date(val: str, fmt: str) -> str:
+def _parse_date(val: str, fmt: str, output_fmt: str = "%Y-%m-%d") -> str:
     normalized = val.lower()
     for pt, en in _PT_MONTHS.items():
         normalized = normalized.replace(pt, en)
     try:
-        return datetime.strptime(normalized, fmt).strftime("%Y-%m-%d")
+        return datetime.strptime(normalized, fmt).strftime(output_fmt)
     except ValueError:
         return val
 
@@ -101,10 +101,11 @@ class SQLService:
                         except ValueError:
                             values_list.append(f"'{val_str.replace(chr(39), chr(39) * 2)}'")
                     elif tipo_coluna in ("date", "timestamp", "datetime"):
-                        if m.date_format and m.date_format != "%Y-%m-%d":
-                            values_list.append(f"'{_parse_date(val_str, m.date_format)}'")
+                        if m.date_format:
+                            output_fmt = m.date_output_format or "%Y-%m-%d"
+                            values_list.append(f"'{_parse_date(val_str, m.date_format, output_fmt)}'")
                         else:
-                            values_list.append(f"'{val_str.replace(chr(39), chr(39) * 2)}'")
+                            values_list.append(f"'{val_str.replace(chr(39), chr(39) * 2)}'") 
                     else:
                         clean_val = val_str.replace("'", "''")
                         values_list.append(f"'{clean_val}'")
