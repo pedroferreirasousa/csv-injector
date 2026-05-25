@@ -11,4 +11,32 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   background-color: $bg-main;
   color: $text-dark;
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem;
+  height: 52px;
+  background-color: $bg-card;
+  color: $text-muted;
+  width: 100%;
+  box-sizing: border-box;
+
+  a {
+    color: $primary;
+    text-decoration: none;
+    font-weight: 500;
+    transition: $transition-fast;
+
+    &:hover {
+      color: $primary-hover;
+      text-decoration: underline;
+    }
+  }
 }

@@ -27,7 +27,12 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>{children}
+
+        <footer className="footer">
+        CSV Injector created by :{"  "}<a href="https://github.com/pedroferreirasousa" target="_blank" rel="noopener noreferrer">Pedro Ferreira Sousa</a>
+        </footer>
+      </body>
     </html>
   );
 }

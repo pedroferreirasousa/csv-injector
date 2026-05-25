@@ -3,7 +3,7 @@
 .wrapper {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  flex: 1;
 }
 
 .topbar {
@@ -35,7 +35,39 @@
 .main {
   flex: 1;
   padding: 2.5rem 2rem;
-  max-width: 1100px;
   width: 100%;
   margin: 0 auto;
+  background-color: #ececec;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.mainMapping {
+  padding-top: 1.5rem;
+}
+
+.content {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  justify-content: center;
+  height: auto;
+  gap: 2rem;
+
+  &_name{
+    color: $text-dark;
+
+    h3{
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    p{
+      font-size: 1rem;
+      color: $text-muted;
+    }
+  }
 }
