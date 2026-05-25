@@ -1,4 +1,6 @@
 import os
+import re
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from datetime import datetime
 from fastapi import HTTPException, status
 from app.core.csv_parser import CSVProcessor, STORAGE_DIR
@@ -20,6 +22,30 @@ def _parse_date(val: str, fmt: str, output_fmt: str = "%Y-%m-%d") -> str:
         return datetime.strptime(normalized, fmt).strftime(output_fmt)
     except ValueError:
         return val
+
+
+def _get_decimal_scale(db_type: str) -> int | None:
+    """Extract scale from DECIMAL(precision,scale) or NUMERIC(precision,scale)."""
+    match = re.search(r'\(\s*\d+\s*,\s*(\d+)\s*\)', db_type, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def _format_decimal(val_str: str, db_type: str) -> str:
+    clean = val_str.replace(",", ".")
+    try:
+        d = Decimal(clean)
+    except InvalidOperation:
+        return f"'{val_str.replace(chr(39), chr(39)*2)}'"
+
+    scale = _get_decimal_scale(db_type)
+    if scale is not None:
+        quantize_str = "1" if scale == 0 else f"0.{'0' * scale}"
+        d = d.quantize(Decimal(quantize_str), rounding=ROUND_HALF_UP)
+        return str(d)
+
+    return str(d)
 
 
 class SQLService:
@@ -93,13 +119,7 @@ class SQLService:
                             values_list.append(val_str if val_str.isdigit() else "0")
 
                     elif any(t in tipo_coluna for t in ("decimal", "numeric", "float")):
-                        clean_num = val_str.replace(",", ".")
-                        try:
-                            values_list.append(
-                                str(float(clean_num) if "." in clean_num else int(clean_num))
-                            )
-                        except ValueError:
-                            values_list.append(f"'{val_str.replace(chr(39), chr(39) * 2)}'")
+                        values_list.append(_format_decimal(val_str, m.db_type))
                     elif tipo_coluna in ("date", "timestamp", "datetime"):
                         if m.date_format:
                             output_fmt = m.date_output_format or "%Y-%m-%d"
