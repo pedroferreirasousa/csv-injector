@@ -5,6 +5,7 @@ import { CSVUploadResponse } from "../DragDropZone";
 import { ArrowLeftIcon, CodeIcon, ClipboardIcon, CheckIcon } from "@/components/icons";
 import { DIALECT_TYPES_MAP, isBooleanOrTinyint, isDateType, isVarcharType, isDecimalType, getBaseType, ValueMapping, DATE_FORMAT_OPTIONS, DATE_OUTPUT_FORMAT_OPTIONS } from "./constants";
 import Modal from "../Modal";
+import { API_BASE_URL } from "@/lib/api";
 import styles from "./styles.module.scss";
 
 interface MappingTableProps {
@@ -27,7 +28,8 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedSql, setGeneratedSql] = useState("");
   const [copied, setCopied] = useState(false);
-  
+  const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeModalIndex, setActiveModalIndex] = useState<number | null>(null);
   const [modalType, setModalType] = useState<"boolean" | "date" | "varchar" | "decimal" | null>(null);
@@ -208,7 +210,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
     };
 
     try {
-      const response = await fetch("http://localhost:8000/api/v1/generate-sql", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/generate-sql`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -218,6 +220,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
 
       const result = await response.json();
       setGeneratedSql(result.sql_script);
+      setIsSqlModalOpen(true);
     } catch (error) {
       console.error(error);
       alert("Falha ao gerar o script SQL.");
@@ -377,11 +380,16 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
       </div>
 
       {generatedSql && (
-        <div className={styles.outputContainer}>
+        <Modal
+          isOpen={isSqlModalOpen}
+          onClose={() => { setIsSqlModalOpen(false); setCopied(false); }}
+          title="Script SQL gerado"
+          contentClassName={styles.sqlModalContent}
+        >
           <div className={styles.outputHeader}>
             <div className={styles.outputTitle}>
               <CodeIcon size={14} />
-              <span>Script gerado</span>
+              <span>{data.filename}</span>
             </div>
             <button className={styles.copyBtn} onClick={handleCopy}>
               {copied ? <CheckIcon size={13} /> : <ClipboardIcon size={13} />}
@@ -394,7 +402,7 @@ export default function MappingTable({ data, onCancel }: MappingTableProps) {
             className={styles.textareaSql}
             onClick={(e) => (e.target as HTMLTextAreaElement).select()}
           />
-        </div>
+        </Modal>
       )}
 
       <Modal

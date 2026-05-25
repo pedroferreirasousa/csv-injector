@@ -2,6 +2,7 @@
 
 import { useState, useRef, DragEvent, ChangeEvent } from "react";
 import { UploadIcon, SpinnerIcon } from "@/components/icons";
+import { API_BASE_URL } from "@/lib/api";
 import styles from "./styles.module.scss";
 
 export interface CSVUploadResponse {
@@ -35,7 +36,7 @@ export default function DragDropZone({ onUploadSuccess }: DragDropZoneProps) {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:8000/api/v1/upload-csv", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/upload-csv`, {
         method: "POST",
         body: formData,
       });

@@ -1,6 +1,10 @@
 @use "../../app/variables" as *;
 @use "sass:color";
 
+.sqlModalContent {
+  max-width: 860px !important;
+}
+
 .container {
   width: 100%;
   max-width: 1000px;
